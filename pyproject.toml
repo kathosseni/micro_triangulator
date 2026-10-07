@@ -1,0 +1,10 @@
+[tool.ruff.lint]
+select = [
+    "D",
+    "E",
+    "F",
+    "UP",
+    "B",
+    "SIM",
+    "I",
+]

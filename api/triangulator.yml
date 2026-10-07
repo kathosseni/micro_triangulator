@@ -1,0 +1,102 @@
+openapi: 3.0.3
+info:
+  title: Triangulator API
+  description: |-
+    API for calculating the triangulation of a 2D point set.
+    It retrieves the PointSet data from the PointSetManager service
+    using a PointSetID, performs the triangulation, and returns
+    the result in binary format.
+  version: 1.0.0
+servers:
+  - url: /
+    description: Server root
+paths:
+  /triangulation/{pointSetId}:
+    get:
+      summary: Calculate triangulation for a PointSet
+      description: |-
+        Requests the triangulation for a given PointSetID.
+        The service will internally fetch the PointSet from the
+        PointSetManager, compute the triangulation, and return
+        the 'Triangles' structure in binary format.
+      operationId: getTriangulation
+      parameters:
+        - name: pointSetId
+          in: path
+          description: The UUID of the PointSet to triangulate.
+          required: true
+          schema:
+            $ref: '#/components/schemas/PointSetID'
+      responses:
+        '200':
+          description: Triangulation successful.
+          content:
+            application/octet-stream:
+              schema:
+                $ref: '#/components/schemas/Triangles'
+        '400':
+          description: Bad request, e.g., invalid PointSetID format.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: The specified PointSetID was not found (as reported by the PointSetManager).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error, e.g., triangulation algorithm failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Service unavailable, e.g.  communication with PointSetManager failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    PointSetID:
+      type: string
+      format: uuid
+      description: The unique identifier for a PointSet.
+      example: '123e4567-e89b-12d3-a456-426614174000'
+
+    Triangles:
+      type: string
+      format: binary
+      description: |
+        Binary representation of a triangulation, composed of two parts.
+        
+        Part 1: Vertices (identical to PointSet format)
+        - First 4 bytes (unsigned long): Number of vertices (N).
+        - Following N * 8 bytes: The vertices, where each vertex is:
+          - 4 bytes (float): X coordinate
+          - 4 bytes (float): Y coordinate
+        
+        Part 2: Triangles (indices referencing vertices from Part 1)
+        - Next 4 bytes (unsigned long): Number of triangles (T).
+        - Following T * 12 bytes: The triangles, where each triangle is:
+          - 4 bytes (unsigned long): Index of the first vertex
+          - 4 bytes (unsigned long): Index of the second vertex
+          - 4 bytes (unsigned long): Index of the third vertex
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: An internal error code.
+          example: 'TRIANGULATION_FAILED'
+        message:
+          type: string
+          description: A human-readable error message.
+          example: 'Triangulation could not be computed for the given point set.'
+      required:
+        - code
+        - message

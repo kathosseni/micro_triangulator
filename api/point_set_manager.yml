@@ -1,0 +1,117 @@
+openapi: 3.0.3
+info:
+  title: PointSetManager API
+  description: |-
+    API for managing 2D point sets.
+    Allows for:
+    1. Uploading (registering) new point sets.
+    2. Retrieving existing point sets by their ID.
+  version: 1.0.0
+servers:
+  - url: /
+    description: Server root
+paths:
+  /pointset:
+    post:
+      summary: Register a new PointSet
+      description: Uploads a new PointSet in its binary representation. The service registers it and returns a unique ID.
+      operationId: createPointSet
+      requestBody:
+        description: The binary representation of the PointSet to register.
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              $ref: '#/components/schemas/PointSet'
+      responses:
+        '201':
+          description: PointSet created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pointSetId:
+                    $ref: '#/components/schemas/PointSetID'
+        '400':
+          description: Bad request, e.g., invalid binary format.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: The PointSet storage layer (database) is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /pointset/{pointSetId}:
+    get:
+      summary: Retrieve an existing PointSet
+      description: Fetches an existing PointSet using its unique ID. This is used by the Triangulator service to get data for calculation.
+      operationId: getPointSetById
+      parameters:
+        - name: pointSetId
+          in: path
+          description: The UUID of the PointSet to retrieve.
+          required: true
+          schema:
+            $ref: '#/components/schemas/PointSetID'
+      responses:
+        '200':
+          description: Successful retrieval of the PointSet.
+          content:
+            application/octet-stream:
+              schema:
+                $ref: '#/components/schemas/PointSet'
+        '400':
+          description: Bad request, e.g., invalid PointSetID format.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: A PointSet with the specified ID was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: The PointSet storage layer (database) is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    PointSetID:
+      type: string
+      format: uuid
+      description: The unique identifier for a PointSet.
+      example: '123e4567-e89b-12d3-a456-426614174000'
+
+    PointSet:
+      type: string
+      format: binary
+      description: |
+        Binary representation of a 2D point set.
+        - First 4 bytes (unsigned long): Number of points (N).
+        - Following N * 8 bytes: The points, where each point is:
+          - 4 bytes (float): X coordinate
+          - 4 bytes (float): Y coordinate
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: An internal error code.
+          example: 'NOT_FOUND'
+        message:
+          type: string
+          description: A human-readable error message.
+          example: 'The requested resource could not be found.'
+      required:
+        - code
+        - message
